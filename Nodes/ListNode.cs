@@ -12,5 +12,10 @@ namespace YangHandlerTool
         /// </summary>
         public string Key { get; set; }
         public ListNode(string name) : base(name) { }
+
+        public override string NodeAsYangString()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

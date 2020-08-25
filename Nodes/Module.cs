@@ -32,5 +32,10 @@ namespace YangHandlerTool
             namespacedictionary.TryGetValue(_prefix, out outvalue);
             return outvalue;
         }
+
+        public override string NodeAsYangString()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

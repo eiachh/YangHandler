@@ -7,7 +7,6 @@ namespace YangHandlerTool
 {
     public class Leaf :YangNode
     {
-        public string Type { get; set; }
         public bool Config { get; set; }
 
         public Leaf(string leafname) : base(leafname)
@@ -25,5 +24,9 @@ namespace YangHandlerTool
             return new XElement(Name, "Example Content");
         }
 
+        public override string NodeAsYangString()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

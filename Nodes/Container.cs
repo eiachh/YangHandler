@@ -9,6 +9,9 @@ namespace YangHandlerTool
     {
         public Container(string name) : base(name) { }
 
-
+        public override string NodeAsYangString()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

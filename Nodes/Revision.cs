@@ -15,5 +15,10 @@ namespace YangHandlerTool
         {
             return null;
         }
+
+        public override string NodeAsYangString()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using YangHandler.Nodes.Property;
 
 namespace YangHandlerTool
 {
@@ -9,16 +10,18 @@ namespace YangHandlerTool
     {
         public string YangAsRawText { get; private set; }
         private static List<SearchScheme> InterpreterSearchSchemeList;
+        private static List<TokenTypes> MultilineTokens;
         private static List<TokenTypes> ItemsThatRequireParentFallback;
 
         private TokenTypes InterpreterStatus = TokenTypes.Start;
-        private TokenTypes PreviousInterpreterStatus = TokenTypes.Start;
         Stack<TokenTypes> InterpreterStatusStack = new Stack<TokenTypes>();
         private List<string> Metadata = new List<string>();
         private YangNode InterpreterTracer;
         private YangNode TracerCurrentNode;
 
         private Token PreviousToken;
+
+        int LineNumber = -1;
 
         private static void Init()
         {
@@ -37,15 +40,24 @@ namespace YangHandlerTool
                 new SearchScheme(new Regex(@"^\s*leaf-list (([a-z0-9]|-)*) {$",RegexOptions.IgnoreCase),TokenTypes.LeafList,1,-1),
                 new SearchScheme(new Regex(@"^\s*list (([a-z0-9]|-)*) {$",RegexOptions.IgnoreCase),TokenTypes.List,1,-1),
                 new SearchScheme(new Regex("^\\s*key \"([^\"]*)\";$",RegexOptions.IgnoreCase),TokenTypes.Key,-1,1),
-                new SearchScheme(new Regex(@"^\s*type (([a-z0-9]|-)*);$",RegexOptions.IgnoreCase),TokenTypes.Type,1,-1),
+                new SearchScheme(new Regex(@"^\s*type (([a-z0-9]|-)*);$",RegexOptions.IgnoreCase),TokenTypes.SimpleType,1,-1),
+                new SearchScheme(new Regex(@"^\s*type (([a-z0-9]|-)*) {$",RegexOptions.IgnoreCase),TokenTypes.Type,1,-1),
                 new SearchScheme(new Regex(@"^\s*revision (([a-z0-9]|-)*) {$",RegexOptions.IgnoreCase),TokenTypes.Revision,-1,1),
                 new SearchScheme(new Regex("^\\s*description \"([^\"]*)\";$",RegexOptions.IgnoreCase),TokenTypes.Description,-1,1),
                 new SearchScheme(new Regex("^\\s*description\\s*$",RegexOptions.IgnoreCase),TokenTypes.DescriptionWithValueNextLine,-1,-1,TokenTypes.Description),
                 new SearchScheme(new Regex("^\\s*\"([^\"]*)\";$"),TokenTypes.ValueForPreviousLine,-1,1),
                 new SearchScheme(new Regex(@"^\s*config (true|false);$"),TokenTypes.ConfigStatement,-1, 1),
-                new SearchScheme(new Regex(@"^\s*typedef ([a-z0-9]|-)* {$"),TokenTypes.Typedef,1,-1),
-                new SearchScheme(new Regex("^\\s*range \"([0-9]*..[0-9]*)\";$"),TokenTypes.Range,-1,1),
+                new SearchScheme(new Regex(@"^\s*typedef (([a-z0-9]|-)*) {$"),TokenTypes.Typedef,1,-1),
+                new SearchScheme(new Regex("^\\s*range \"([0-9]* ?.. ?[0-9]*)\";$"),TokenTypes.Range,-1,1),
                 new SearchScheme(new Regex(@"^\s*}$"),TokenTypes.NodeEndingBracket,-1,-1)
+            };
+
+
+            ///Multiline tokens can only be simple tokens where token name is presented in the first line, token value is presented in the upcoming line(s)
+            ///For complex Nodes use "List metadata"
+            MultilineTokens = new List<TokenTypes>
+            {
+                TokenTypes.DescriptionWithValueNextLine,
             };
 
             ItemsThatRequireParentFallback = new List<TokenTypes>
@@ -54,6 +66,8 @@ namespace YangHandlerTool
                 TokenTypes.Container,
                 TokenTypes.LeafList,
                 TokenTypes.List,
+                TokenTypes.Typedef,
+                TokenTypes.Type,
             };
         }
         private YangHandler(string InputStr, bool IsPath)
@@ -100,6 +114,7 @@ namespace YangHandlerTool
 
             foreach (var RowOfYangText in YangAsRawTextRowByRow)
             {
+                LineNumber++;
                 var TokenForCurrentRow = GetTokenForRow(RowOfYangText);
                 if (TokenForCurrentRow != null)
                 {
@@ -141,6 +156,7 @@ namespace YangHandlerTool
                     return MatchResultToken;
                 }
             }
+
             return null;
         }
 
@@ -156,7 +172,7 @@ namespace YangHandlerTool
 
         private bool MultiLineToken(Token token)
         {
-            return token.TokenType == TokenTypes.DescriptionWithValueNextLine;
+            return MultilineTokens.Contains(token.TokenType);
         }
 
         private void SetPreviousToken(Token previoustoken)
@@ -218,10 +234,11 @@ namespace YangHandlerTool
                 }
                 else if (InputToken.TokenType == TokenTypes.Container)
                 {
-                    Container cont = new Container(InputToken.TokenName);
-                    ((ContainerCapability)TracerCurrentNode).AddChild(cont);
-                    TracerCurrentNode = cont;
-                    NewInterpreterStatus(InputToken.TokenType);
+                    AddNewYangNode(typeof(Container),InputToken);
+                }
+                else if (InputToken.TokenType == TokenTypes.Typedef)
+                {
+                    AddNewYangNode(typeof(Typedef), InputToken);
                 }
             }
 
@@ -232,31 +249,19 @@ namespace YangHandlerTool
             {
                 if (InputToken.TokenType == TokenTypes.Leaf)
                 {
-                    Leaf leaf = new Leaf(InputToken.TokenName);
-                    ((ContainerCapability)TracerCurrentNode).AddChild(leaf);
-                    TracerCurrentNode = leaf;
-                    NewInterpreterStatus(InputToken.TokenType);
+                    AddNewYangNode(typeof(Leaf), InputToken);
                 }
                 else if (InputToken.TokenType == TokenTypes.LeafList)
                 {
-                    LeafList leaflist = new LeafList(InputToken.TokenName);
-                    ((ContainerCapability)TracerCurrentNode).AddChild(leaflist);
-                    TracerCurrentNode = leaflist;
-                    NewInterpreterStatus(InputToken.TokenType);
+                    AddNewYangNode(typeof(LeafList), InputToken);
                 }
                 if (InputToken.TokenType == TokenTypes.Container)
                 {
-                    Container cont = new Container(InputToken.TokenName);
-                    ((ContainerCapability)TracerCurrentNode).AddChild(cont);
-                    TracerCurrentNode = cont;
-                    NewInterpreterStatus(InputToken.TokenType);
+                    AddNewYangNode(typeof(Container), InputToken);
                 }
                 if (InputToken.TokenType == TokenTypes.List)
                 {
-                    ListNode lnode = new ListNode(InputToken.TokenName);
-                    ((ContainerCapability)TracerCurrentNode).AddChild(lnode);
-                    TracerCurrentNode = lnode;
-                    NewInterpreterStatus(InputToken.TokenType);
+                    AddNewYangNode(typeof(ListNode), InputToken);
                 }
 
             }
@@ -264,12 +269,9 @@ namespace YangHandlerTool
             ///LEAF
             else if (InterpreterStatus == TokenTypes.Leaf)
             {
-                if (InputToken.TokenType == TokenTypes.Type)
+                if (InputToken.TokenType == TokenTypes.SimpleType)
                 {
-                    if (YangTypes.IsValidType(InputToken.TokenName))
-                    {
-                        ((Leaf)TracerCurrentNode).Type = InputToken.TokenName;
-                    }
+                    AddTypeProperty(InputToken.TokenName);
                 }
                 else if (InputToken.TokenType == TokenTypes.Description)
                 {
@@ -283,22 +285,19 @@ namespace YangHandlerTool
             ///LEAF-LIST
             else if (InterpreterStatus == TokenTypes.LeafList)
             {
-                if (InputToken.TokenType == TokenTypes.Type)
+                if (InputToken.TokenType == TokenTypes.SimpleType)
                 {
-                    if (YangTypes.IsValidType(InputToken.TokenName))
-                    {
-                        ((LeafList)TracerCurrentNode).Type = InputToken.TokenName;
-                    }
-                    else if (InputToken.TokenType == TokenTypes.Description)
-                    {
-                        TracerCurrentNode.Description = InputToken.TokenValue;
-                    }
+                    AddTypeProperty(InputToken.TokenName);
+                }
+                else if (InputToken.TokenType == TokenTypes.Description)
+                {
+                    TracerCurrentNode.Description = InputToken.TokenValue;
                 }
             }
 
 
 
-
+            ///LIST
             else if (InterpreterStatus == TokenTypes.List)
             {
                 if (InputToken.TokenType == TokenTypes.Key)
@@ -307,14 +306,33 @@ namespace YangHandlerTool
                 }
                 if (InputToken.TokenType == TokenTypes.Leaf)
                 {
-                    Leaf leaf = new Leaf(InputToken.TokenName);
-                    ((ContainerCapability)TracerCurrentNode).AddChild(leaf);
-                    TracerCurrentNode = leaf;
-                    NewInterpreterStatus(InputToken.TokenType);
+                    AddNewYangNode(typeof(Leaf), InputToken);
                 }
             }
 
 
+
+            ///Typedef
+            else if (InterpreterStatus == TokenTypes.Typedef)
+            {
+                if (InputToken.TokenType == TokenTypes.Type)
+                {
+                    AddNewYangNode(typeof(TypeNode), InputToken);
+                    CreateMetadata(new List<string> { InputToken.TokenName });
+                }
+            }
+
+
+            ///TYPE
+            else if (InterpreterStatus == TokenTypes.Type)
+            {
+                if (InputToken.TokenType == TokenTypes.Range)
+                {
+                    Range rangeprop = new Range();
+                    rangeprop.SetValue(InputToken.TokenValue);
+                    ((TypeNode)TracerCurrentNode).Range = rangeprop;
+                }
+            }
 
 
 
@@ -332,6 +350,15 @@ namespace YangHandlerTool
                 Revision rev = new Revision(Metadata[0]);
                 rev.Description = InputToken.TokenValue;
                 ((ContainerCapability)TracerCurrentNode).AddChild(rev);
+            }
+
+            ///No search scheme match => Incorrect inputline;
+            else
+            {
+                 InterpretationErrorHandler interpreterr = new InterpretationErrorHandler("unrecognisable line.", 
+                                                                                         "The interpreter could not convert the following line into any valid token.", 
+                                                                                         LineNumber, 
+                                                                                         InterpreterTracer);
             }
         }
 
@@ -373,6 +400,32 @@ namespace YangHandlerTool
         {
             InterpreterStatusStack.Push(status);
             InterpreterStatus = status;
+        }
+
+        private void AddNewYangNode(Type type,Token InputToken)
+        {
+            var instantiatedobj = (YangNode)Activator.CreateInstance(type,InputToken.TokenName);
+            ((ContainerCapability)TracerCurrentNode).AddChild(instantiatedobj);
+            TracerCurrentNode = instantiatedobj;
+            NewInterpreterStatus(InputToken.TokenType);
+        }
+
+        /// <summary>
+        /// DEPRECATED TPYE IS NOT A STRING
+        /// </summary>
+        /// <param name="tokentype"></param>
+        /// <returns></returns>
+        private bool AddTypeProperty(string tokentype)
+        { 
+            if (YangTypes.IsValidType(tokentype))
+            {
+                TracerCurrentNode.Type = tokentype;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 
