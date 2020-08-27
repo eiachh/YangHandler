@@ -17,5 +17,10 @@ namespace YangHandlerTool
         {
             throw new NotImplementedException();
         }
+
+        public override string NodeAsYangString(int identationlevel)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

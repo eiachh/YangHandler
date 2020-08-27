@@ -18,5 +18,14 @@ namespace YangHandler.Nodes.Property
         {
             return Name + "\"" + Value + "\"" + ";";
         }
+        public string PropertyAsYangText(int identationlevel)
+        {
+            return GetIdentation(identationlevel) + Name + "\"" + Value + "\"" + ";";
+        }
+
+        protected string GetIdentation(int n)
+        {
+            return new String('\t', n);
+        }
     }
 }

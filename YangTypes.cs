@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
+using YangHandler.Interpreter;
 
 namespace YangHandlerTool
 {
     public static class YangTypes
     {
+        private static Dictionary<string,TypeNode> DefinedTypes = new Dictionary<string,TypeNode>();
+
         static Dictionary<string, string> DisplayNameDict = new Dictionary<string, string>
         {
             {"binary", "binary"},
@@ -32,17 +35,22 @@ namespace YangHandlerTool
 
         };
 
-        public static void AddNewYangType(string typekey, string typedisplayname)
+        public static void AddNewYangType(string typekey, string typedisplayname,int line, YangNode tracer)
         {
-            if(!DisplayNameDict.TryAdd(typekey,typedisplayname))
+            typekey = typekey.Replace("-", "_");
+            if(!DisplayNameDict.TryAdd(typekey, typedisplayname))
             {
-                ///FINISH LATER
-                var asdsdsdsdsdsd = 2;
+                InterpretationErrorHandler interpreterr = new InterpretationErrorHandler(
+                                                          "Multiple type declaration.", 
+                                                          "Type: " + typekey + " cannot be added baceuse it was already declared before", 
+                                                          line, tracer);
             }
         }
 
         public static string GetDisplayName(string typekey)
         {
+            typekey = typekey.Replace("-", "_");
+
             string _DisplayName = string.Empty;
             if(DisplayNameDict.TryGetValue(typekey, out _DisplayName))
             {
@@ -54,22 +62,38 @@ namespace YangHandlerTool
             }
         }
 
-        public static string GetDisplayName(YangBuiltInTypes Type)
+        public static TypeNode GetType(string typekey)
+        {
+            typekey = typekey.Replace("-", "_");
+            TypeNode retnode;
+            DefinedTypes.TryGetValue(typekey, out retnode);
+            return retnode;
+        }
+
+        /*public static string GetDisplayName(YangBuiltInTypes Type)
         {
             return GetDisplayName(Type.ToString());
-        }
+        }*/
 
         public static bool IsValidType(string typekey)
         {
             string outstr;
             return DisplayNameDict.TryGetValue(typekey, out outstr);
         }
+
+        public static void BindType(string typekey,TypeNode node)
+        {
+            if (!DefinedTypes.TryAdd(typekey, node))
+            {
+                throw new TypebindingError("Type cannot be binded as \""+node.Name+"\" it already exists.");
+            }
+        }
     }
 
     /// <summary>
     /// This is the enum for yang built in types. This enum should be used with GetDisplayName() only
     /// </summary>
-    public enum YangBuiltInTypes
+   /* public enum YangBuiltInTypes
     {
         [Display(Name = "binary")] binary,
         [Display(Name = "bits")] bits,
@@ -90,7 +114,7 @@ namespace YangHandlerTool
         [Display(Name = "uint32")] uint32,
         [Display(Name = "uint64")] uint64,
         [Display(Name = "union")] union
-    }
+    }*/
     public static class EnumExtensions
     {
         public static string GetDisplayName(this Enum enumValue)
@@ -101,7 +125,7 @@ namespace YangHandlerTool
                             .GetCustomAttribute<DisplayAttribute>()
                             .GetName();
         }
-        public static YangBuiltInTypes GetValueFromName(string name)
+        /*public static YangBuiltInTypes GetValueFromName(string name)
         {
             var type = typeof(YangBuiltInTypes);
             if (!type.IsEnum) throw new InvalidOperationException();
@@ -125,6 +149,6 @@ namespace YangHandlerTool
             }
 
             throw new ArgumentOutOfRangeException("name");
-        }
+        }*/
     }
 }

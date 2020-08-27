@@ -7,10 +7,12 @@ namespace YangHandlerTool
     public enum TokenTypes
     {
         Start,
+        Skip,
         Leaf,
         LeafList,
         Container,
         List,
+        Grouping,
         SimpleType,
         Type,
         TypeMultiline,

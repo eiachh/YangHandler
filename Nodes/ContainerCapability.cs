@@ -41,7 +41,7 @@ namespace YangHandlerTool
             }
         }
 
-        public override XElement NodeAsXML()
+        public override XElement[] NodeAsXML()
         {
             XElement containerasroot = new XElement(this.Name);
 
@@ -52,8 +52,7 @@ namespace YangHandlerTool
                     containerasroot.Add(child.NodeAsXML());
                 }
             }
-
-            return containerasroot;
+            return new XElement[] { containerasroot };
         }
     }
 }

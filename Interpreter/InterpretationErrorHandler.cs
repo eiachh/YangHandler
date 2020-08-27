@@ -17,15 +17,20 @@ namespace YangHandlerTool
             ErrorType = _ErrorType;
             FullErrorText = _FullErrorText;
             Tracer = (ContainerCapability)_Tracer;
+            Line = _Line;
 
 
             PrintError();
+
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadKey();
+            Environment.Exit(11);
         }
 
         private void PrintError()
         {
             Console.WriteLine("--------------------------------------------------------------------\r\n");
-            Console.WriteLine("Error Type: {0}. In line: {1}",ErrorType,Line);
+            Console.WriteLine("Error Type: {0} In line: {1}",ErrorType,Line);
             Console.WriteLine("\r\n--------------------------------------------------------------------\r\n");
             Console.WriteLine(FullErrorText);
             Console.WriteLine("\r\n--------------------------------------------------------------------\r\n");
@@ -52,6 +57,10 @@ namespace YangHandlerTool
                         currentnode = ((ContainerCapability)currentnode).LastChild();
                         TracebackString += GetYangNodeAsString(currentnode);
                     }
+                    else
+                    {
+                        TracebackFinished = true;
+                    }
                 }
                 else
                 {
@@ -59,7 +68,7 @@ namespace YangHandlerTool
                 }
             }
 
-            return TracebackString+"\r\nLast read node: \r\n"+currentnode.NodeAsYangString();
+            return TracebackString+"\r\n\r\nLast read node: \r\n"+currentnode.NodeAsYangString();
         }
 
         private string GetYangNodeAsString(YangNode node)

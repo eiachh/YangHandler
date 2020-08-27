@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Xml.Linq;
+using YangHandler.Nodes.Property;
+using YangHandler.Nodes;
 
 namespace YangHandlerTool
 {
@@ -9,10 +11,11 @@ namespace YangHandlerTool
     public abstract class YangNode 
     {
         public string Name { get; set; }
-        public string Type { get; set; }
-        public string Description { get; set; }
-        public YangNode Parent { get; set; }
-        public abstract XElement NodeAsXML();
+        public SimpleTypeNode Type { get; set; }
+        public Description Description { get; set; }
+        public virtual YangNode Parent { get; set; }
+        public abstract XElement[] NodeAsXML();
+        public abstract string NodeAsYangString(int identationlevel);
         public abstract string NodeAsYangString();
 
         /// <summary>
@@ -20,5 +23,12 @@ namespace YangHandlerTool
         /// </summary>
         private YangNode() { }
         public YangNode(string name) { Name = name; }
+
+
+
+        protected string GetIdentation(int n)
+        {
+            return new String('\t', n);
+        }
     }
 }

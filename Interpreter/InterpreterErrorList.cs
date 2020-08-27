@@ -16,4 +16,17 @@ namespace YangHandler.Interpreter
         protected OverflownContainer(System.Runtime.Serialization.SerializationInfo info,
             System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
+
+    [Serializable()]
+    public class TypebindingError : System.Exception
+    {
+        public TypebindingError() : base() { }
+        public TypebindingError(string message) : base(message) { }
+        public TypebindingError(string message, System.Exception inner) : base(message, inner) { }
+
+        // A constructor is needed for serialization when an
+        // exception propagates from a remoting server to the client.
+        protected TypebindingError(System.Runtime.Serialization.SerializationInfo info,
+            System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+    }
 }

@@ -11,12 +11,17 @@ namespace YangHandlerTool
         public string Value { get; set; }
         public Revision(string value) : base("revision") { Value = value; }
 
-        public override XElement NodeAsXML()
+        public override XElement[] NodeAsXML()
         {
             return null;
         }
 
         public override string NodeAsYangString()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override string NodeAsYangString(int identationlevel)
         {
             throw new NotImplementedException();
         }
