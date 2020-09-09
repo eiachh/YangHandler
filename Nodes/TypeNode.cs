@@ -3,23 +3,31 @@ using System.Collections.Generic;
 using System.Text;
 using System.Xml.Linq;
 using YangHandler.Nodes.Property;
+using YangHandler.Nodes;
+using YangHandler.Interpreter;
 
 namespace YangHandlerTool
 {
-    public class TypeNode : YangNode
+    public class TypeNode : ContainerCapability
     {
         private YangNode parent;
+        public Range Range { get; set; }
+
         public override YangNode Parent
         {
             get { return parent; }
             set
             {
                 parent = value;
-                YangTypes.BindType(parent.Name, this);
+                var tmpTypedefAsParent = parent;
+                while (tmpTypedefAsParent != null && tmpTypedefAsParent.GetType() != typeof(Typedef))
+                {
+                    tmpTypedefAsParent = tmpTypedefAsParent.Parent;
+                }
+                YangTypes.BindType(tmpTypedefAsParent.Name, this);
             }
         }
 
-        public Range Range { get; set; }
         public TypeNode(string name) : base(name)
         {
             if(!YangTypes.IsValidType(name))
@@ -27,6 +35,17 @@ namespace YangHandlerTool
                 throw new ArgumentException("The given type for TypeNode is not a valid type: "+name);
             }
         }
+
+        public override void AddChild(YangNode Node)
+        {
+            //Types can strictly contain other types only as children. 
+            if (Node.GetType() == typeof(TypeNode) || Node.GetType() == typeof(YangEnum))
+            {
+                throw new TypeMissmatch("TypeNode can strictly contain other (TypeNodes or Enums) only as children.");
+            }
+            base.AddChild(Node);
+        }
+
         public override XElement[] NodeAsXML()
         {
             throw new NotImplementedException();

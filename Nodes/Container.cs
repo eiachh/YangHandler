@@ -11,7 +11,13 @@ namespace YangHandlerTool
 
         public override string NodeAsYangString()
         {
-            throw new NotImplementedException();
+            string retval = string.Format("container {0} {{\r\n", Name);
+            foreach (var child in Children)
+            {
+                retval += child.NodeAsYangString(1)+"\r\n";
+            }
+            retval += "}";
+            return retval;
         }
 
         public override string NodeAsYangString(int identationlevel)

@@ -7,7 +7,10 @@ using YangHandler.Nodes;
 
 namespace YangHandlerTool
 {
-    
+    public enum YangAddingOption
+    {
+        ChildIncapable
+    }
     public abstract class YangNode 
     {
         public string Name { get; set; }
